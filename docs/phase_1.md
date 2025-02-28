@@ -131,9 +131,9 @@ See [Phase 1 Flow Diagram](./diagrams/phase_1_flow_diagram.md)
   - [x] Use an in-memory data model (e.g., a simple array or dictionary) to store journal entries temporarily.
   - [x] Add error handling for speech recognition failures.
 
-- [ ] **Testing & Debugging:**  
-  - [ ] Simulate various scenarios: successful transcription, recognition failure, and ignored notifications.
-  - [ ] Use logging to verify that reminders trigger as expected.
+- [x] **Testing & Debugging:**  
+  - [x] Simulate various scenarios: successful transcription, recognition failure, and ignored notifications.
+  - [x] Use logging to verify that reminders trigger as expected.
 
 ## Edge Cases & Error Handling
 - **User ignores notifications** → App keeps reminding every 30 minutes until 10 PM.

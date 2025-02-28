@@ -29,22 +29,9 @@
 		88455CE52D7242F2001E6A82 /* TrinityUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TrinityUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		88A26E572D725114008C7688 /* Exceptions for "Trinity" folder in "Trinity" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 88455CC82D7242F0001E6A82 /* Trinity */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		88455CCB2D7242F0001E6A82 /* Trinity */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				88A26E572D725114008C7688 /* Exceptions for "Trinity" folder in "Trinity" target */,
-			);
 			path = Trinity;
 			sourceTree = "<group>";
 		};
@@ -412,7 +399,7 @@
 				DEVELOPMENT_TEAM = T68D5HSJCT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Trinity/Info.plist;
+				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Trinity needs microphone access to record your voice for journal entries.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Trinity needs access to speech recognition to transcribe your journal entries.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -444,7 +431,7 @@
 				DEVELOPMENT_TEAM = T68D5HSJCT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Trinity/Info.plist;
+				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Trinity needs microphone access to record your voice for journal entries.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Trinity needs access to speech recognition to transcribe your journal entries.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

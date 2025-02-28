@@ -8,9 +8,11 @@
 import SwiftUI
 import Speech
 import UserNotifications
-
-// Import the manager classes
+import os.log
 import Foundation
+
+// The ContentView needs to be in the same module as the manager classes
+// so we don't need to import them explicitly
 
 struct ContentView: View {
     @State private var currentPrompt = "What do you desire?"
@@ -21,6 +23,10 @@ struct ContentView: View {
     @State private var speechRecognitionEnabled = false
     @State private var errorMessage: String?
     @State private var showingError = false
+    @State private var recordingStatus = "Ready to record"
+    
+    // Create a logger
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.trinity.journal", category: "ContentView")
     
     // Array of prompts to cycle through
     private let prompts = [
@@ -38,6 +44,12 @@ struct ContentView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
                 .padding(.top, 40)
+            
+            // Recording status
+            Text(recordingStatus)
+                .font(.system(size: 14))
+                .foregroundColor(isRecording ? .red : .gray)
+                .padding(.top, -10)
             
             Spacer()
             
@@ -106,20 +118,43 @@ struct ContentView: View {
             Alert(
                 title: Text("Error"),
                 message: Text(errorMessage ?? "An unknown error occurred"),
-                dismissButton: .default(Text("OK"))
+                dismissButton: .default(Text("OK")) {
+                    // Reset recording state when error is dismissed
+                    isRecording = false
+                    recordingStatus = "Ready to record"
+                }
             )
         }
     }
     
     private func toggleRecording() {
-        isRecording.toggle()
+        // Prevent multiple rapid toggles
+        if recordingStatus == "Processing..." || recordingStatus == "Preparing..." {
+            logger.info("Recording state transition in progress, ignoring toggle")
+            return
+        }
         
         if isRecording {
-            // Start recording and transcription
-            startRecording()
-        } else {
             // Stop recording
+            logger.info("Stopping recording")
+            recordingStatus = "Processing..."
             stopRecording()
+            
+            // Reset status after a delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                self.recordingStatus = "Ready to record"
+            }
+        } else {
+            // Start recording and transcription
+            logger.info("Starting recording for prompt: \(self.currentPrompt)")
+            recordingStatus = "Preparing..."
+            isRecording = true
+            
+            // Add a longer delay before starting recording to ensure any previous session is fully cleaned up
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                self.recordingStatus = "Listening..."
+                self.startRecording()
+            }
         }
     }
     
@@ -128,17 +163,27 @@ struct ContentView: View {
             try SpeechManager.shared.startRecording()
         } catch {
             isRecording = false
+            recordingStatus = "Ready to record"
             errorMessage = "Failed to start recording: \(error.localizedDescription)"
             showingError = true
+            logger.error("Failed to start recording: \(error.localizedDescription)")
         }
     }
     
     private func stopRecording() {
         SpeechManager.shared.stopRecording()
+        
+        // Add a longer delay to ensure the audio session is properly cleaned up
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+            self.isRecording = false
+            logger.info("Audio session cleanup completed")
+        }
     }
     
     private func setupSpeechRecognition() {
         // Set up handlers for transcription updates and errors
+        logger.info("Setting up speech recognition handlers")
+        
         SpeechManager.shared.transcriptionHandler = { text in
             DispatchQueue.main.async {
                 self.transcribedText = text
@@ -147,36 +192,71 @@ struct ContentView: View {
         
         SpeechManager.shared.errorHandler = { error in
             DispatchQueue.main.async {
-                self.isRecording = false
-                self.errorMessage = "Speech recognition error: \(error.localizedDescription)"
-                self.showingError = true
+                // Always stop recording on error
+                if self.isRecording {
+                    self.isRecording = false
+                    self.recordingStatus = "Ready to record"
+                }
+                
+                // Handle specific error cases
+                let nsError = error as NSError
+                if nsError.domain == "SpeechManager" && nsError.code == 3 {
+                    // No speech detected error
+                    self.errorMessage = "No speech detected. Please try again and speak clearly."
+                    self.showingError = true
+                    self.logger.error("Speech recognition error: No speech detected")
+                } else if nsError.domain == "kAFAssistantErrorDomain" {
+                    // Speech service error - don't show alert for these as they're often transient
+                    self.logger.error("Speech recognition service error: \(error.localizedDescription)")
+                } else {
+                    // Other errors
+                    self.errorMessage = "Speech recognition error: \(error.localizedDescription)"
+                    self.showingError = true
+                    self.logger.error("Speech recognition error: \(error.localizedDescription)")
+                }
             }
         }
     }
     
     private func saveEntry() {
+        // First stop any ongoing recording
+        if isRecording {
+            stopRecording()
+            isRecording = false
+        }
+        
         // Save the entry to local storage using JournalStore
+        logger.info("Saving journal entry for prompt: \(currentPrompt)")
         JournalStore.shared.saveEntry(prompt: currentPrompt, response: transcribedText)
-        print("Journal entry saved successfully")
+        logger.info("Journal entry saved successfully")
         
         // Move to next prompt or end session
         moveToNextPrompt()
     }
     
     private func discardEntry() {
+        // First stop any ongoing recording
+        if isRecording {
+            stopRecording()
+            isRecording = false
+        }
+        
         // Clear the transcribed text and stay on the same prompt
+        logger.info("Discarding journal entry")
         transcribedText = ""
-        isRecording = false
+        recordingStatus = "Ready to record"
     }
     
     private func moveToNextPrompt() {
         // Clear the current transcription
         transcribedText = ""
         isRecording = false
+        recordingStatus = "Ready to record"
         
         // Move to the next prompt or end session
         promptIndex = (promptIndex + 1) % prompts.count
         currentPrompt = prompts[promptIndex]
+        logger.info("Moved to next prompt: \(currentPrompt)")
     }
     
     private func requestPermissions() {
