@@ -1,7 +1,7 @@
 # Trinity Journaling App Product Requirements Document
 
 ## 1. Executive Summary
-This journaling app is designed to help users develop a consistent journaling habit through scheduled notifications, voice-based input, and intelligent prompt management. The app guides the user through three key prompts—Desire, Gratitude, and Brag—by automatically initiating voice recording and dynamically adapting to the user’s input. Journal entries are ultimately sent to Notion, ensuring users have an external, structured record of their daily reflections.
+This journaling app is designed to help users develop a consistent journaling habit through scheduled notifications, voice-based input, and intelligent prompt management. The app guides the user through three key prompts—Desire, Gratitude, and Brag—by automatically initiating voice recording and dynamically adapting to the user's input. Journal entries are ultimately sent to Notion, ensuring users have an external, structured record of their daily reflections.
 
 ## 2. Problem Statement & Objectives
 **Problem Statement:**  
@@ -29,7 +29,7 @@ Many people struggle with maintaining a daily journaling habit due to time const
 - **Flexible Session Management:**  
   The app auto-starts recording, transcribes speech, and, if needed, refines the prompt based on voice input.
 - **Notion Integration:**  
-  Completed entries for Desire, Gratitude, and Brag are automatically formatted and sent to the user’s Notion daily note.
+  Completed entries for Desire, Gratitude, and Brag are automatically formatted and sent to the user's Notion daily note.
 - **Adaptive Interaction:**  
   If the user mixes response types or indicates confusion, the app intelligently adapts, ensuring clarity and ease-of-use.
 
@@ -39,7 +39,7 @@ Many people struggle with maintaining a daily journaling habit due to time const
   
 - **Voice Recording & Transcription:**  
   - Automatic start of recording upon app launch.
-  - Real-time transcription using Apple’s built-in speech-to-text API.
+  - Real-time transcription using Apple's built-in speech-to-text API.
   - Retry mechanism for failed transcriptions.
 
 - **Notification Scheduling & Reminder Logic:**  
@@ -71,7 +71,7 @@ Many people struggle with maintaining a daily journaling habit due to time const
   - Clean, minimal design with generous white space.
   - Card-style views with rounded corners for displaying prompts and transcriptions.
   - Use SF Symbols for icons (e.g., microphone for recording, checkmarks for completion).
-  - Interactive buttons (e.g., “Retry”, “Save”) with subtle shadow effects and animations (e.g., fade, slide transitions).
+  - Interactive buttons (e.g., "Retry", "Save") with subtle shadow effects and animations (e.g., fade, slide transitions).
 
 **Interaction Flow:**
 - User opens the app and sees a clear, card-based prompt.
@@ -83,7 +83,7 @@ Many people struggle with maintaining a daily journaling habit due to time const
 **Tech Stack:**
 - **Frontend:**  
   - iOS app built in Swift using either UIKit or SwiftUI.
-  - Apple’s Speech Framework for transcription.
+  - Apple's Speech Framework for transcription.
   - Local Notifications for reminders.
 
 - **Backend:**  
@@ -146,27 +146,31 @@ struct JournalEntry: Codable {
 ## 8. Milestones & Roadmap
 **Phase 1: Basic Local-Only Journaling App**
 - Set up Xcode project, configure permissions, and implement basic UI.
-- Integrate local notifications and Apple’s Speech Framework.
+- Integrate local notifications and Apple's Speech Framework.
 - Implement in-memory storage for journal entries.
+- [View detailed Phase 1 documentation](./docs/phase_1.md)
 
 **Phase 2: Auto-Start Recording & Improved UI**
 - Auto-start voice recording on app launch.
 - Enhance UI with real-time transcription, animated indicators, and edit options.
 - Implement retry logic for transcription errors.
+- [View detailed Phase 2 documentation](./docs/phase_2.md)
 
 **Phase 3: Notion Integration (Basic)**
 - Develop a Notion API client using a Facade pattern.
-- Map journal entries to Notion’s daily note format.
+- Map journal entries to Notion's daily note format.
 - Provide user feedback on successful uploads and error handling.
+- [View detailed Phase 3 documentation](./docs/phase_3.md)
 
 **Phase 4: AI-Powered Prompt Switching & Formatting**
 - Integrate AI for prompt classification via a backend endpoint.
 - Implement dynamic prompt switching and adaptive refinement.
 - Format responses using Strategy and Chain of Responsibility patterns.
+- [View detailed Phase 4 documentation](./docs/phase_4.md)
 
 ## 9. Future Enhancements
 - **Enhanced Data Visualization:**  
-  Provide analytics and insights based on the user’s journaling history (e.g., mood trends, recurring themes).
+  Provide analytics and insights based on the user's journaling history (e.g., mood trends, recurring themes).
 - **Customizable Prompts:**  
   Allow users to create or modify prompts based on their personal growth areas.
 - **Auto-Tagging & Sentiment Analysis:**  
