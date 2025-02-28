@@ -79,10 +79,10 @@ In this phase, we implement:
   Integrate the Notion API in the model layer, keeping the controller slim.
 
 ## Implementation Checklist
-- [ ] **Backend Setup:**  
-  - [ ] implement direct Notion API calls from the iOS app (using HTTPS requests).
-- [ ] **Notion API Client:**  
-  - [ ] Create a `NotionAPIClient` class:
+- [x] **Backend Setup:**  
+  - [x] implement direct Notion API calls from the iOS app (using HTTPS requests).
+- [x] **Notion API Client:**  
+  - [x] Create a `NotionAPIClient` class:
     ```swift
     class NotionAPIClient {
         static let shared = NotionAPIClient()
@@ -94,9 +94,9 @@ In this phase, we implement:
         }
     }
     ```
-  - [ ] Securely store and access the Notion API key.
-- [ ] **Mapping Data:**  
-  - [ ] Define the data model to structure journal entries:
+  - [x] Securely store and access the Notion API key.
+- [x] **Mapping Data:**  
+  - [x] Define the data model to structure journal entries:
     ```swift
     struct JournalEntry: Codable {
         let date: String
@@ -105,12 +105,12 @@ In this phase, we implement:
         let brag: [String]
     }
     ```
-- [ ] **UI Integration:**  
-  - [ ] After the user saves an entry locally, trigger the Notion API call.
-  - [ ] Show a modal popup confirming success or prompting a retry in case of error.
-- [ ] **Testing & Debugging:**  
-  - [ ] Test API responses for both success and failure scenarios.
-  - [ ] Log API errors for troubleshooting.
+- [x] **UI Integration:**  
+  - [x] After the user saves an entry locally, trigger the Notion API call.
+  - [x] Show a modal popup confirming success or prompting a retry in case of error.
+- [x] **Testing & Debugging:**  
+  - [x] Test API responses for both success and failure scenarios.
+  - [x] Log API errors for troubleshooting.
 
 
 ## Flow Diagrams

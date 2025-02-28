@@ -49,6 +49,11 @@ struct ContentView: View {
     @State private var silenceTimer: Timer?
     @State private var showRetryButton = false
     
+    // Add new states for Notion integration
+    @State private var showingNotionSuccess = false
+    @State private var showingNotionError = false
+    @State private var notionErrorMessage: String?
+    
     // Create a logger
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.trinity.journal", category: "ContentView")
     
@@ -177,6 +182,9 @@ struct ContentView: View {
                     self.startRecordingForPrompt()
                 }
             }
+            
+            // Set up notification handlers for Notion API uploads
+            setupNotionIntegration()
         }
         .alert(isPresented: $showingError) {
             Alert(
@@ -205,6 +213,21 @@ struct ContentView: View {
                 }
             )
         }
+        // Add Notion success alert
+        .alert("Successfully Saved to Notion", isPresented: $showingNotionSuccess) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Your journal entry has been saved to your Notion database.")
+        }
+        // Add Notion error alert
+        .alert("Error Saving to Notion", isPresented: $showingNotionError) {
+            Button("OK", role: .cancel) { }
+            Button("Retry", role: .none) {
+                retryNotionUpload()
+            }
+        } message: {
+            Text(notionErrorMessage ?? "There was an error saving your entry to Notion.")
+        }
     }
     
     // New method to centralize recording start logic
@@ -230,8 +253,14 @@ struct ContentView: View {
             
             self.startRecording()
             
-            // Remove the silence detection timer to allow indefinite recording
-            self.logger.info("Recording will continue indefinitely until manually stopped")
+            // Set up silence detection timer (15 seconds)
+            self.silenceTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: false) { _ in
+                if self.isRecording {
+                    self.logger.info("Silence detected, stopping recording")
+                    self.stopRecording()
+                    self.currentState = .transcribing
+                }
+            }
         }
     }
     
@@ -262,7 +291,7 @@ struct ContentView: View {
         // Stop the recording
         SpeechManager.shared.stopRecording()
         
-        // Cancel any running timers (keeping this for safety in case timers are added elsewhere)
+        // Cancel any running timers
         silenceTimer?.invalidate()
         silenceTimer = nil
         
@@ -300,26 +329,6 @@ struct ContentView: View {
         
         SpeechManager.shared.errorHandler = { (error: Error) in
             DispatchQueue.main.async {
-                let nsError = error as NSError
-                
-                // Ignore "No speech detected" errors to allow indefinite waiting
-                if nsError.domain == "SpeechManager" && nsError.code == 3 {
-                    if nsError.localizedDescription.contains("No additional speech detected") || 
-                       nsError.localizedDescription.contains("No speech detected") {
-                        // Log the error but don't show it to the user and don't stop recording
-                        self.logger.info("Ignoring 'No speech detected' error to allow indefinite waiting")
-                        return
-                    }
-                } else if nsError.domain == "kAFAssistantErrorDomain" && 
-                          (nsError.localizedDescription.contains("No speech detected") || 
-                           nsError.localizedDescription.contains("No speech")) {
-                    // Also ignore Apple's speech service errors about no speech
-                    self.logger.info("Ignoring Apple speech service 'No speech' error")
-                    return
-                }
-                
-                // For all other errors, proceed with normal error handling
-                
                 // Always stop recording on error
                 if self.isRecording {
                     self.isRecording = false
@@ -327,8 +336,28 @@ struct ContentView: View {
                     self.currentState = .idle
                 }
                 
-                // Handle other error cases
-                if nsError.domain == "kAFAssistantErrorDomain" {
+                // Handle specific error cases
+                let nsError = error as NSError
+                if nsError.domain == "SpeechManager" && nsError.code == 3 {
+                    // Check the error message to determine the specific case
+                    if nsError.localizedDescription.contains("No additional speech detected") {
+                        // User started speaking but then stopped
+                        self.errorMessage = "No additional speech detected. Your entry has been saved."
+                        self.showingError = true
+                        self.logger.error("Speech recognition error: No additional speech detected")
+                        
+                        // If we have some transcribed text, save it automatically
+                        if !self.transcribedText.isEmpty {
+                            self.saveEntry()
+                        }
+                    } else {
+                        // No speech detected at all
+                        self.errorMessage = "No speech detected. Please try again and speak clearly."
+                        self.showingError = true
+                        self.logger.error("Speech recognition error: No speech detected")
+                        self.showRetryButton = true
+                    }
+                } else if nsError.domain == "kAFAssistantErrorDomain" {
                     // Speech service error - handle more gracefully
                     self.logger.error("Speech recognition service error: \(error.localizedDescription)")
                     
@@ -520,6 +549,22 @@ struct ContentView: View {
         // Start recording again
         logger.info("Retrying transcription for prompt: \(self.currentPrompt)")
         startRecordingForPrompt()
+    }
+    
+    private func setupNotionIntegration() {
+        JournalStore.shared.notionUploadStatusHandler = { success, errorMessage in
+            if success {
+                self.showingNotionSuccess = true
+            } else {
+                self.notionErrorMessage = errorMessage ?? "Unknown error occurred"
+                self.showingNotionError = true
+            }
+        }
+    }
+    
+    private func retryNotionUpload() {
+        // Trigger a retry of the Notion upload
+        JournalStore.shared.uploadEntriesToNotion()
     }
 }
 
