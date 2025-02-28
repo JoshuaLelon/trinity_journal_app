@@ -23,6 +23,11 @@ class SpeechManager: NSObject, SFSpeechRecognizerDelegate {
     var transcriptionHandler: ((String) -> Void)?
     var errorHandler: ((Error) -> Void)?
     
+    // Public property to check if we're in a cleanup state
+    var isInCleanupState: Bool {
+        return isCleaningUp || isCancelling
+    }
+    
     private override init() {
         super.init()
         speechRecognizer?.delegate = self
@@ -247,11 +252,14 @@ class SpeechManager: NSObject, SFSpeechRecognizerDelegate {
         logger.info("Stopping recording")
         isCleaningUp = true
         
-        // Cancel the no speech timer
+        // Cancel the no speech timer first to prevent it from firing during cleanup
         invalidateNoSpeechTimer()
         
         // Cancel the task completion timer
         invalidateTaskCompletionTimer()
+        
+        // Reset flags immediately to prevent race conditions
+        isListening = false
         
         if audioEngine.isRunning {
             logger.info("Audio engine is running, stopping it")
@@ -269,7 +277,7 @@ class SpeechManager: NSObject, SFSpeechRecognizerDelegate {
             logger.warning("Attempted to stop recording but audio engine was not running")
         }
         
-        // Reset the audio session on iOS
+        // Reset the audio session on iOS immediately
         #if os(iOS)
         do {
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
@@ -282,8 +290,8 @@ class SpeechManager: NSObject, SFSpeechRecognizerDelegate {
         // Record when we ended this session
         lastSessionEndTime = Date()
         
-        // Cancel the recognition task after a longer delay to allow processing to complete
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+        // Cancel the recognition task after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self = self else { return }
             
             self.logger.info("Cancelling existing recognition task")
@@ -293,9 +301,8 @@ class SpeechManager: NSObject, SFSpeechRecognizerDelegate {
             self.recognitionRequest = nil
             
             // Add a delay before marking cancellation as complete
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 self.isCancelling = false
-                self.isListening = false
                 self.isCleaningUp = false
                 self.logger.info("Recognition task and request cleared")
             }

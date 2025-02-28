@@ -183,6 +183,10 @@ struct ContentView: View {
             return
         }
         
+        // Add call stack logging to track who's calling toggleRecording
+        let callStack = Thread.callStackSymbols.joined(separator: "\n")
+        logger.info("toggleRecording called from:\n\(callStack)")
+        
         if isRecording {
             // Stop recording
             logger.info("Stopping recording")
@@ -206,7 +210,13 @@ struct ContentView: View {
             currentState = .recording
             
             // Add a longer delay before starting recording to ensure any previous session is fully cleaned up
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                // Double check we're still in recording state
+                guard self.isRecording else {
+                    self.logger.info("Recording state changed during preparation, cancelling start")
+                    return
+                }
+                
                 self.recordingStatus = "Listening..."
                 self.startRecording()
                 
@@ -238,6 +248,9 @@ struct ContentView: View {
         // Log that we're stopping recording
         logger.info("Stopping recording and cleaning up audio session")
         
+        // Immediately update UI state to show we're not recording anymore
+        isRecording = false
+        
         // Stop the recording
         SpeechManager.shared.stopRecording()
         
@@ -245,10 +258,13 @@ struct ContentView: View {
         silenceTimer?.invalidate()
         silenceTimer = nil
         
-        // Add a longer delay to ensure the audio session is properly cleaned up
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
-            self.isRecording = false
-            self.currentState = .transcribing
+        // State transition happens after cleanup
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            // Only set to transcribing if we're not already in a different state (like idle)
+            // This prevents overriding the idle state set by moveToNextPrompt
+            if self.currentState == .recording {
+                self.currentState = .transcribing
+            }
             self.logger.info("Audio session cleanup completed")
         }
     }
@@ -259,12 +275,15 @@ struct ContentView: View {
         
         SpeechManager.shared.transcriptionHandler = { (text: String) in
             DispatchQueue.main.async {
-                // Only update transcription if we're recording
-                if self.isRecording {
+                // Update transcription if we have text, regardless of recording state
+                // This ensures we don't miss transcription during state transitions
+                if !text.isEmpty {
                     self.transcribedText = text
-                    self.logger.info("Updated transcription: \"\(text)\"")
-                } else {
-                    self.logger.info("Received transcription while not recording, ignoring: \"\(text)\"")
+                    if self.isRecording {
+                        self.logger.info("Updated transcription: \"\(text)\"")
+                    } else {
+                        self.logger.info("Updated transcription while not recording: \"\(text)\"")
+                    }
                 }
             }
         }
@@ -326,11 +345,30 @@ struct ContentView: View {
     private func saveEntry() {
         logger.info("Saving entry for prompt: \(currentPrompt)")
         
-        // Save to journal store using the existing method
-        JournalStore.shared.saveEntry(prompt: currentPrompt, response: transcribedText)
+        // First, ensure all recording resources are properly cleaned up
+        if isRecording {
+            // Stop recording if it's still in progress
+            logger.info("Recording still in progress during save, stopping it first")
+            stopRecording()
+            
+            // Wait for cleanup to complete before proceeding
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                self.completeSaveAndMoveToNext()
+            }
+        } else {
+            // If not recording, proceed immediately
+            completeSaveAndMoveToNext()
+        }
+    }
+    
+    private func completeSaveAndMoveToNext() {
+        // Make sure silence timer is canceled
+        silenceTimer?.invalidate()
+        silenceTimer = nil
         
-        // Move to next prompt
-        moveToNextPrompt()
+        // Save to journal store using the existing method
+        let currentResponse = transcribedText // Capture current text before clearing
+        JournalStore.shared.saveEntry(prompt: currentPrompt, response: currentResponse)
         
         // Reset UI state
         transcribedText = ""
@@ -339,9 +377,8 @@ struct ContentView: View {
         currentState = .idle
         showRetryButton = false
         
-        // Cancel any running timers
-        silenceTimer?.invalidate()
-        silenceTimer = nil
+        // Move to next prompt - this schedules the auto-start
+        moveToNextPrompt()
     }
     
     private func discardEntry() {
@@ -364,7 +401,10 @@ struct ContentView: View {
         transcribedText = ""
         isRecording = false
         recordingStatus = "Ready to record"
-        currentState = .idle
+        
+        // Set state to idle and log the state change
+        self.currentState = .idle
+        logger.info("State reset to idle for next prompt")
         
         // Move to the next prompt or end session
         promptIndex = (promptIndex + 1) % prompts.count
@@ -376,12 +416,45 @@ struct ContentView: View {
             self.transcribedText = ""
         }
         
-        // Add a longer delay before auto-starting the next recording session
-        // to ensure the previous audio session is fully cleaned up
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+        // Set a flag to prevent immediate recording in another part of the code
+        let tempPromptIndex = promptIndex
+        
+        // Use a longer delay (8 seconds instead of 5) to ensure the previous audio session 
+        // is fully cleaned up, and any silence timer that might be running has finished
+        logger.info("Scheduling auto-start for next prompt in 8 seconds")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
+            // Check if we're still on the same prompt (no user interaction in between)
+            if self.promptIndex != tempPromptIndex {
+                self.logger.info("Prompt changed since scheduling auto-start, cancelling auto-start")
+                return
+            }
+            
+            // Force state to idle again just before checking conditions
+            // This ensures any delayed operations that changed the state won't interfere
+            self.currentState = .idle
+            
+            self.logger.info("Auto-start timer fired, checking conditions")
+            self.logger.info("Speech recognition enabled: \(self.speechRecognitionEnabled), isRecording: \(self.isRecording), currentState: \(String(describing: self.currentState))")
+            
+            // Additional check to ensure we're not in the middle of a cleanup
+            guard !SpeechManager.shared.isInCleanupState else {
+                self.logger.info("Not auto-starting: SpeechManager is still cleaning up")
+                
+                // Try again after a short delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    if self.speechRecognitionEnabled && !self.isRecording && self.currentState == .idle {
+                        self.logger.info("Retrying auto-start after delay")
+                        self.toggleRecording()
+                    }
+                }
+                return
+            }
+            
             if self.speechRecognitionEnabled && !self.isRecording && self.currentState == .idle {
                 self.logger.info("Auto-starting recording for next prompt after delay")
-                self.autoStartRecording()
+                self.toggleRecording() // Use toggleRecording instead of autoStartRecording for consistency
+            } else {
+                self.logger.info("Not auto-starting: conditions not met")
             }
         }
     }
