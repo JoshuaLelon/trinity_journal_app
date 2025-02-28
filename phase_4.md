@@ -45,7 +45,92 @@ Note: consider design patterns and UI design
   - Track which prompts have been answered for the day.
   - Consider journaling complete only when all three prompts (Desire, Gratitude, Brag) have been answered.
 
----
+## UI & Styling Guidelines
+- **User Feedback:**  
+  - Use subtle animations (e.g., slide transitions) to indicate when the prompt changes.
+  - Display an overlay message when the app auto-switches a prompt (e.g., “Switching to Gratitude”).
+- **Consistent Elements:**  
+  - Maintain the card-based layout and font styles from earlier phases.
+  - Use progress indicators to show journaling advancement (e.g., checkmarks on completed prompts).
+- **Notification of Success/Error:**  
+  - Use modal popups with clear messages.
+  - Success modals: green accents; error modals: red accents.
+- **Color Palette:**  
+  - Background: #FFFFFF (white)  
+  - Primary Accent: #007AFF (iOS blue)  
+  - Text: #333333 (dark gray)  
+- **Typography:**  
+  - Font: San Francisco (iOS default)  
+  - Headings: Bold, 20pt; Body: Regular, 16pt.
+- **Layout:**  
+  - Clean, minimal design with plenty of white space.
+  - Use rounded corners for buttons and cards.
+- **Visuals:**  
+  - Use simple icons (e.g., microphone icon for recording) from SF Symbols.
+  - Animations for transitions (fade in/out) for a smooth user experience.
+- **Layout Enhancements:**  
+  - Introduce a progress indicator or subtle animation while recording.
+  - Use card-style views to display prompts and transcriptions.
+- **Colors & Fonts:**  
+  - Maintain Phase 1 color palette.
+  - Use a slightly larger font for real-time transcription display (18pt, regular).
+- **Interactive Elements:**  
+  - Clearly styled “Retry” and “Save” buttons with a shadow effect for depth.
+  - Visual feedback (e.g., change button color) when recording starts/stops.
+
+## Design Patterns & Architecture
+- **Strategy Pattern:**  
+  Implement different strategies for prompt classification (e.g., one for detecting mixed responses and another for refining prompts).
+- **Chain of Responsibility:**  
+  Route the response through a series of handlers (e.g., check for “I don’t know,” mixed content, or clear prompt alignment) before final formatting.
+- **Mediator Pattern:**  
+  Coordinate between the AI engine, the UI, and the Notion integration without tightly coupling them.
+ 
+## Implementation Checklist
+- [ ] **Integrate AI Engine:**  
+  - [ ] Develop a backend endpoint that sends the transcribed text to the OpenAI API.
+  
+  Code Example: AI Classification Request (Swift)
+    ```swift
+    func classifyResponse(text: String, completion: @escaping (AIClassificationResult?) -> Void) {
+        let url = URL(string: "https://your-backend.com/classify_response")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body = ["text": text]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body, options: [])
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            guard let data = data,
+                let result = try? JSONDecoder().decode(AIClassificationResult.self, from: data) else {
+                completion(nil)
+                return
+            }
+            completion(result)
+        }.resume()
+    }
+    ```
+  - [ ] Implement a function that returns classification details:
+    ```swift
+    struct AIClassificationResult: Codable {
+        let prompt: String // e.g., "gratitude", "desire", or "mixed"
+        let percentages: [String: Int]
+        let formattedResponse: String
+    }
+    ```
+- [ ] **Prompt Switching Logic:**  
+  - [ ] Implement a handler that checks if the response contains mixed sentiments.
+  - [ ] If mixed, display a message and allow the user to confirm the switch.
+- [ ] **Adaptive Prompt Refinement:**  
+  - [ ] When the user says “I don't know” or is stuck, provide subcategory suggestions:
+    - Example: For gratitude – “Health”, “Career”, “Relationships.”
+  - [ ] Update the UI to reflect these refinements.
+- [ ] **Data Formatting:**  
+  - [ ] Clean the response (remove filler words, improve punctuation).
+  - [ ] Use a Strategy pattern to swap between different formatting methods.
+- [ ] **Testing & Debugging:**  
+  - [ ] Simulate various user inputs to ensure the classification and prompt switching work as expected.
+  - [ ] Log AI API responses to verify accuracy.
 
 ## Flow Diagrams
 
@@ -104,48 +189,8 @@ flowchart TD
     N -->|More Prompts?| B
 ```
 
----
-
-## API Contracts & Example Requests/Responses
-### **Request (Sending to AI for Classification & Formatting)**
-```json
-POST /classify_response
-{
-  "text": "I am grateful for my health, but I also really want a new job."
-}
-```
-
-### **Response (AI Determines Prompt & Reformats Text)**
-```json
-{
-  "prompt": "mixed",
-  "percentages": {"gratitude": 60, "desire": 40},
-  "formatted_response": "I am grateful for my health. I also want a new job."
-}
-```
-
-### **Request (Saving to Notion After AI Processing)**
-```json
-POST /send_to_notion
-{
-  "date": "2025-03-01",
-  "gratitude": ["I am grateful for my health."],
-  "desire": ["I also want a new job."]
-}
-```
-
-### **Response (Success)**
-```json
-{
-  "status": "success",
-  "message": "Entry saved to Notion"
-}
-```
-
----
-
 ## Dependencies & Configuration
-- **Technologies**: Swift (iOS app), FastAPI (backend), OpenAI API (for classification & formatting), Notion API.
+- **Technologies**: Swift (iOS app), FastAPI (backend), LangChain, OpenAI API (for classification & formatting), Notion API.
 - **Permissions Needed**:
   - `NSMicrophoneUsageDescription` (for voice input)
   - `NSSpeechRecognitionUsageDescription` (for speech-to-text)
