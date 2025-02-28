@@ -67,19 +67,19 @@ See [Phase 1 Sequence Diagram](./diagrams/phase_1_sequence_diagram.md)
 See [Phase 1 Flow Diagram](./diagrams/phase_1_flow_diagram.md)
 
 ## Implementation Checklist
-- [ ] **Project Setup:**  
-  - [ ] Create a new Xcode project (Swift, iOS).
-  - [ ] Configure Info.plist with permissions: `NSMicrophoneUsageDescription`, `NSSpeechRecognitionUsageDescription`, and `NSUserNotificationUsageDescription`.
+- [x] **Project Setup:**  
+  - [x] Create a new Xcode project (Swift, iOS).
+  - [x] Configure Info.plist with permissions: `NSMicrophoneUsageDescription`, `NSSpeechRecognitionUsageDescription`, and `NSUserNotificationUsageDescription`.
 
-- [ ] **UI Development:**  
-  - [ ] Create a basic storyboard or SwiftUI view with:
+- [x] **UI Development:**  
+  - [x] Create a basic storyboard or SwiftUI view with:
     - A large label for the prompt (e.g., "What do you desire?").
     - A recording button with a microphone icon.
     - A text view area to display the transcription.
-  - [ ] Apply the style guide (colors, fonts, rounded corners).
+  - [x] Apply the style guide (colors, fonts, rounded corners).
 
-- [ ] **Notification Scheduling:**  
-  - [ ] Implement a singleton `NotificationManager`:
+- [x] **Notification Scheduling:**  
+  - [x] Implement a singleton `NotificationManager`:
     ```swift
     class NotificationManager {
         static let shared = NotificationManager()
@@ -111,12 +111,12 @@ See [Phase 1 Flow Diagram](./diagrams/phase_1_flow_diagram.md)
         }
     }
     ```
-    - [ ] Test notifications in the simulator.
+    - [x] Test notifications in the simulator.
 
 
-- [ ] **Voice Recording & Transcription:**  
-  - [ ] Integrate Apple's Speech Framework.
-  - [ ] Create a helper class (or extend the controller) to handle voice recording:
+- [x] **Voice Recording & Transcription:**  
+  - [x] Integrate Apple's Speech Framework.
+  - [x] Create a helper class (or extend the controller) to handle voice recording:
     ```swift
     import Speech
 
@@ -125,11 +125,11 @@ See [Phase 1 Flow Diagram](./diagrams/phase_1_flow_diagram.md)
         // Additional properties and methods to start/stop recording and process transcription.
     }
     ```
-  - [ ] Ensure the UI displays the transcribed text in real time.
+  - [x] Ensure the UI displays the transcribed text in real time.
 
-- [ ] **Local Storage:**  
-  - [ ] Use an in-memory data model (e.g., a simple array or dictionary) to store journal entries temporarily.
-  - [ ] Add error handling for speech recognition failures.
+- [x] **Local Storage:**  
+  - [x] Use an in-memory data model (e.g., a simple array or dictionary) to store journal entries temporarily.
+  - [x] Add error handling for speech recognition failures.
 
 - [ ] **Testing & Debugging:**  
   - [ ] Simulate various scenarios: successful transcription, recognition failure, and ignored notifications.
