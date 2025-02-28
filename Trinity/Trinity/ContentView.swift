@@ -25,7 +25,20 @@ enum RecordingState {
 struct ContentView: View {
     @State private var currentPrompt = "What do you desire?"
     @State private var transcribedText = ""
-    @State private var isRecording = false
+    @State private var isRecording = false {
+        didSet {
+            // Update recording status whenever isRecording changes
+            if isRecording {
+                if recordingStatus != "Listening..." && recordingStatus != "Preparing..." {
+                    recordingStatus = "Preparing..."
+                }
+            } else {
+                if recordingStatus == "Listening..." {
+                    recordingStatus = "Processing..."
+                }
+            }
+        }
+    }
     @State private var promptIndex = 0
     @State private var notificationsEnabled = false
     @State private var speechRecognitionEnabled = false
@@ -56,11 +69,14 @@ struct ContentView: View {
                 .padding(.horizontal)
                 .padding(.top, 40)
             
-            // Recording status
+            // Recording status with slightly more prominence
             Text(recordingStatus)
-                .font(.system(size: 14))
+                .font(.system(size: 16, weight: .medium))
                 .foregroundColor(isRecording ? .red : .gray)
-                .padding(.top, -10)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(isRecording ? Color.red.opacity(0.1) : Color.gray.opacity(0.1))
+                .cornerRadius(8)
             
             Spacer()
             
@@ -80,13 +96,32 @@ struct ContentView: View {
             
             Spacer()
             
-            // Recording button or retry button
+            // Recording indicator (replaces the button)
+            if isRecording {
+                HStack(spacing: 15) {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 12, height: 12)
+                        .opacity(0.8)
+                    
+                    Text("Recording in progress...")
+                        .font(.system(size: 16))
+                        .foregroundColor(.red)
+                }
+                .padding(.bottom, 10)
+                
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: Color(hex: "#007AFF")))
+                    .scaleEffect(1.5)
+                    .padding(.bottom, 20)
+            }
+            
             if showRetryButton && !transcribedText.isEmpty {
                 Button(action: retryTranscription) {
                     HStack {
                         Image(systemName: "arrow.clockwise.circle.fill")
                             .font(.system(size: 20))
-                        Text("Retry Transcription")
+                        Text("Retry")
                             .font(.system(size: 16, weight: .medium))
                     }
                     .foregroundColor(.white)
@@ -97,22 +132,6 @@ struct ContentView: View {
                 }
                 .padding(.bottom, 20)
                 .disabled(!speechRecognitionEnabled)
-            } else {
-                Button(action: toggleRecording) {
-                    Image(systemName: isRecording ? "stop.circle.fill" : "mic.circle.fill")
-                        .font(.system(size: 64))
-                        .foregroundColor(isRecording ? .red : Color(hex: "#007AFF"))
-                }
-                .padding(.bottom, 20)
-                .disabled(!speechRecognitionEnabled)
-            }
-            
-            // Progress indicator while recording
-            if isRecording {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: Color(hex: "#007AFF")))
-                    .scaleEffect(1.5)
-                    .padding(.bottom, 10)
             }
             
             // Save or discard buttons
@@ -154,8 +173,8 @@ struct ContentView: View {
             // Auto-start recording after a short delay to ensure permissions are processed
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 if self.speechRecognitionEnabled && !self.isRecording {
-                    self.logger.info("Auto-starting recording")
-                    self.autoStartRecording()
+                    self.logger.info("Auto-starting recording for initial prompt")
+                    self.startRecordingForPrompt()
                 }
             }
         }
@@ -169,72 +188,60 @@ struct ContentView: View {
                     recordingStatus = "Ready to record"
                     currentState = .idle
                     
-                    // Show retry button if there was an error
-                    showRetryButton = true
+                    // If speech recognition error, show retry button
+                    // Otherwise, auto-restart recording after a delay
+                    if errorMessage?.contains("No speech detected") == true {
+                        showRetryButton = true
+                    } else {
+                        // Auto-restart recording after error dismissal 
+                        // with a short delay
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            if self.speechRecognitionEnabled && !self.isRecording && self.currentState == .idle {
+                                self.logger.info("Auto-restarting recording after error")
+                                self.startRecordingForPrompt()
+                            }
+                        }
+                    }
                 }
             )
         }
     }
     
-    private func toggleRecording() {
-        // Prevent multiple rapid toggles
-        if recordingStatus == "Processing..." || recordingStatus == "Preparing..." {
-            logger.info("Recording state transition in progress, ignoring toggle")
+    // New method to centralize recording start logic
+    private func startRecordingForPrompt() {
+        // Prevent starting if already recording
+        if isRecording {
+            logger.info("Already recording, not starting again")
             return
         }
         
-        // Add call stack logging to track who's calling toggleRecording
-        let callStack = Thread.callStackSymbols.joined(separator: "\n")
-        logger.info("toggleRecording called from:\n\(callStack)")
+        // Start recording and transcription
+        logger.info("Starting recording for prompt: \(self.currentPrompt)")
+        isRecording = true
+        currentState = .recording
         
-        if isRecording {
-            // Stop recording
-            logger.info("Stopping recording")
-            recordingStatus = "Processing..."
-            stopRecording()
-            currentState = .transcribing
-            
-            // Reset status after a delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                self.recordingStatus = "Ready to record"
+        // Add a delay before starting recording to ensure any previous session is fully cleaned up
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            // Double check we're still in recording state
+            guard self.isRecording else {
+                self.logger.info("Recording state changed during preparation, cancelling start")
+                return
             }
             
-            // Cancel silence timer if it's running
-            silenceTimer?.invalidate()
-            silenceTimer = nil
-        } else {
-            // Start recording and transcription
-            logger.info("Starting recording for prompt: \(self.currentPrompt)")
-            recordingStatus = "Preparing..."
-            isRecording = true
-            currentState = .recording
+            self.startRecording()
             
-            // Add a longer delay before starting recording to ensure any previous session is fully cleaned up
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                // Double check we're still in recording state
-                guard self.isRecording else {
-                    self.logger.info("Recording state changed during preparation, cancelling start")
-                    return
-                }
-                
-                self.recordingStatus = "Listening..."
-                self.startRecording()
-                
-                // Set up silence detection timer (15 seconds)
-                self.silenceTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: false) { _ in
-                    if self.isRecording {
-                        self.logger.info("Silence detected, stopping recording")
-                        self.stopRecording()
-                        self.currentState = .transcribing
-                    }
-                }
-            }
+            // Remove the silence detection timer to allow indefinite recording
+            self.logger.info("Recording will continue indefinitely until manually stopped")
         }
     }
     
     private func startRecording() {
         do {
             try SpeechManager.shared.startRecording()
+            // Update recording status when recording starts
+            DispatchQueue.main.async {
+                self.recordingStatus = "Listening..."
+            }
         } catch {
             isRecording = false
             recordingStatus = "Ready to record"
@@ -250,16 +257,19 @@ struct ContentView: View {
         
         // Immediately update UI state to show we're not recording anymore
         isRecording = false
+        recordingStatus = "Processing..."
         
         // Stop the recording
         SpeechManager.shared.stopRecording()
         
-        // Cancel any running timers
+        // Cancel any running timers (keeping this for safety in case timers are added elsewhere)
         silenceTimer?.invalidate()
         silenceTimer = nil
         
-        // State transition happens after cleanup
+        // Set status back to ready after a delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            self.recordingStatus = "Ready to record"
+            
             // Only set to transcribing if we're not already in a different state (like idle)
             // This prevents overriding the idle state set by moveToNextPrompt
             if self.currentState == .recording {
@@ -290,6 +300,26 @@ struct ContentView: View {
         
         SpeechManager.shared.errorHandler = { (error: Error) in
             DispatchQueue.main.async {
+                let nsError = error as NSError
+                
+                // Ignore "No speech detected" errors to allow indefinite waiting
+                if nsError.domain == "SpeechManager" && nsError.code == 3 {
+                    if nsError.localizedDescription.contains("No additional speech detected") || 
+                       nsError.localizedDescription.contains("No speech detected") {
+                        // Log the error but don't show it to the user and don't stop recording
+                        self.logger.info("Ignoring 'No speech detected' error to allow indefinite waiting")
+                        return
+                    }
+                } else if nsError.domain == "kAFAssistantErrorDomain" && 
+                          (nsError.localizedDescription.contains("No speech detected") || 
+                           nsError.localizedDescription.contains("No speech")) {
+                    // Also ignore Apple's speech service errors about no speech
+                    self.logger.info("Ignoring Apple speech service 'No speech' error")
+                    return
+                }
+                
+                // For all other errors, proceed with normal error handling
+                
                 // Always stop recording on error
                 if self.isRecording {
                     self.isRecording = false
@@ -297,28 +327,8 @@ struct ContentView: View {
                     self.currentState = .idle
                 }
                 
-                // Handle specific error cases
-                let nsError = error as NSError
-                if nsError.domain == "SpeechManager" && nsError.code == 3 {
-                    // Check the error message to determine the specific case
-                    if nsError.localizedDescription.contains("No additional speech detected") {
-                        // User started speaking but then stopped
-                        self.errorMessage = "No additional speech detected. Your entry has been saved."
-                        self.showingError = true
-                        self.logger.error("Speech recognition error: No additional speech detected")
-                        
-                        // If we have some transcribed text, save it automatically
-                        if !self.transcribedText.isEmpty {
-                            self.saveEntry()
-                        }
-                    } else {
-                        // No speech detected at all
-                        self.errorMessage = "No speech detected. Please try again and speak clearly."
-                        self.showingError = true
-                        self.logger.error("Speech recognition error: No speech detected")
-                        self.showRetryButton = true
-                    }
-                } else if nsError.domain == "kAFAssistantErrorDomain" {
+                // Handle other error cases
+                if nsError.domain == "kAFAssistantErrorDomain" {
                     // Speech service error - handle more gracefully
                     self.logger.error("Speech recognition service error: \(error.localizedDescription)")
                     
@@ -394,6 +404,14 @@ struct ContentView: View {
         // Cancel any running timers
         silenceTimer?.invalidate()
         silenceTimer = nil
+        
+        // Auto-start recording again for the same prompt after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            if self.speechRecognitionEnabled && !self.isRecording && self.currentState == .idle {
+                self.logger.info("Auto-restarting recording after discard")
+                self.startRecordingForPrompt()
+            }
+        }
     }
     
     private func moveToNextPrompt() {
@@ -444,7 +462,7 @@ struct ContentView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                     if self.speechRecognitionEnabled && !self.isRecording && self.currentState == .idle {
                         self.logger.info("Retrying auto-start after delay")
-                        self.toggleRecording()
+                        self.startRecordingForPrompt()
                     }
                 }
                 return
@@ -452,7 +470,7 @@ struct ContentView: View {
             
             if self.speechRecognitionEnabled && !self.isRecording && self.currentState == .idle {
                 self.logger.info("Auto-starting recording for next prompt after delay")
-                self.toggleRecording() // Use toggleRecording instead of autoStartRecording for consistency
+                self.startRecordingForPrompt()
             } else {
                 self.logger.info("Not auto-starting: conditions not met")
             }
@@ -493,47 +511,6 @@ struct ContentView: View {
         }
     }
     
-    // New function to auto-start recording
-    private func autoStartRecording() {
-        // Only start if we're in the idle state
-        guard currentState == .idle else {
-            logger.info("Not in idle state, not auto-starting recording")
-            return
-        }
-        
-        // Check if we've recently had an error
-        if showRetryButton {
-            logger.info("Retry button is showing, not auto-starting recording")
-            return
-        }
-        
-        logger.info("Auto-starting recording for prompt: \(self.currentPrompt)")
-        recordingStatus = "Preparing..."
-        isRecording = true
-        currentState = .recording
-        
-        // Start recording after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { // Increased delay for better stability
-            // Double-check state before proceeding
-            guard self.currentState == .recording else {
-                self.logger.info("State changed during delay, aborting auto-start")
-                return
-            }
-            
-            self.recordingStatus = "Listening..."
-            self.startRecording()
-            
-            // Set up silence detection timer (15 seconds)
-            self.silenceTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: false) { _ in
-                if self.isRecording {
-                    self.logger.info("Silence detected, stopping recording")
-                    self.stopRecording()
-                    self.currentState = .transcribing
-                }
-            }
-        }
-    }
-    
     // Add a retry transcription function
     private func retryTranscription() {
         // Clear the current transcription
@@ -542,23 +519,7 @@ struct ContentView: View {
         
         // Start recording again
         logger.info("Retrying transcription for prompt: \(self.currentPrompt)")
-        recordingStatus = "Preparing..."
-        isRecording = true
-        currentState = .recording
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.recordingStatus = "Listening..."
-            self.startRecording()
-            
-            // Set up silence detection timer (15 seconds)
-            self.silenceTimer = Timer.scheduledTimer(withTimeInterval: 15.0, repeats: false) { _ in
-                if self.isRecording {
-                    self.logger.info("Silence detected, stopping recording")
-                    self.stopRecording()
-                    self.currentState = .transcribing
-                }
-            }
-        }
+        startRecordingForPrompt()
     }
 }
 
