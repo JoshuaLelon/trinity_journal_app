@@ -40,7 +40,78 @@ In this phase, we implement:
   - Handle failures due to no internet or API errors.
   - Show an error message if saving to Notion fails.
 
----
+## UI & Styling Guidelines
+- **Notification of Success/Error:**  
+  - Use modal popups with clear messages.
+  - Success modals: green accents; error modals: red accents.
+- **Consistent Style:**  
+  - Maintain Phase 1 and 2 styling.  
+  - Use consistent button styling for “Confirm” or “Retry” actions.
+- **Color Palette:**  
+  - Background: #FFFFFF (white)  
+  - Primary Accent: #007AFF (iOS blue)  
+  - Text: #333333 (dark gray)  
+- **Typography:**  
+  - Font: San Francisco (iOS default)  
+  - Headings: Bold, 20pt; Body: Regular, 16pt.
+- **Layout:**  
+  - Clean, minimal design with plenty of white space.
+  - Use rounded corners for buttons and cards.
+- **Visuals:**  
+  - Use simple icons (e.g., microphone icon for recording) from SF Symbols.
+  - Animations for transitions (fade in/out) for a smooth user experience.
+- **Layout Enhancements:**  
+  - Introduce a progress indicator or subtle animation while recording.
+  - Use card-style views to display prompts and transcriptions.
+- **Colors & Fonts:**  
+  - Maintain Phase 1 color palette.
+  - Use a slightly larger font for real-time transcription display (18pt, regular).
+- **Interactive Elements:**  
+  - Clearly styled “Retry” and “Save” buttons with a shadow effect for depth.
+  - Visual feedback (e.g., change button color) when recording starts/stops.
+
+## Design Patterns & Architecture
+- **Facade Pattern:**  
+  Implement a `NotionAPIClient` as a facade to encapsulate all Notion-related API calls.
+- **Singleton Pattern:**  
+  Use a singleton for configuration and authentication with Notion.
+- **MVC:**  
+  Integrate the Notion API in the model layer, keeping the controller slim.
+
+## Implementation Checklist
+- [ ] **Backend Setup:**  
+  - [ ] implement direct Notion API calls from the iOS app (using HTTPS requests).
+- [ ] **Notion API Client:**  
+  - [ ] Create a `NotionAPIClient` class:
+    ```swift
+    class NotionAPIClient {
+        static let shared = NotionAPIClient()
+        private init() {}
+        
+        func sendEntry(date: String, promptData: [String: [String]], completion: @escaping (Bool, String?) -> Void) {
+            // Construct URLRequest and handle API call to Notion
+            // (Include error handling and JSON parsing)
+        }
+    }
+    ```
+  - [ ] Securely store and access the Notion API key.
+- [ ] **Mapping Data:**  
+  - [ ] Define the data model to structure journal entries:
+    ```swift
+    struct JournalEntry: Codable {
+        let date: String
+        let gratitude: [String]
+        let desire: [String]
+        let brag: [String]
+    }
+    ```
+- [ ] **UI Integration:**  
+  - [ ] After the user saves an entry locally, trigger the Notion API call.
+  - [ ] Show a modal popup confirming success or prompting a retry in case of error.
+- [ ] **Testing & Debugging:**  
+  - [ ] Test API responses for both success and failure scenarios.
+  - [ ] Log API errors for troubleshooting.
+
 
 ## Flow Diagrams
 

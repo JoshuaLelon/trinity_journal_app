@@ -177,7 +177,7 @@ POST /complete_journaling
 
 ---
 
-This phase ensures the app intelligently stops and resumes reminders based on completion. In **Phase 6**, we will introduce mixed-response handling to allow users to journal more naturally.
+This phase ensures the app intelligently stops and resumes reminders based on completion.
 
-**[Previous: Phase 4](./phase_4.md) | [Next: Phase 6](./phase_6.md)**
+**[Previous: Phase 4](./phase_4.md)
 
