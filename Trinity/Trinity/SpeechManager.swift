@@ -171,11 +171,13 @@ class SpeechManager: NSObject, SFSpeechRecognizerDelegate {
                 self.resetNoSpeechTimer()
                 
                 // Call the transcription handler with the latest result
-                self.transcriptionHandler?(result.bestTranscription.formattedString)
+                let transcription = result.bestTranscription.formattedString
+                self.logger.info("Received transcription: \"\(transcription)\"")
+                self.transcriptionHandler?(transcription)
                 isFinal = result.isFinal
                 
                 if isFinal {
-                    self.logger.info("Received final transcription result")
+                    self.logger.info("Received final transcription result: \"\(transcription)\"")
                 }
             }
             
@@ -338,11 +340,18 @@ class SpeechManager: NSObject, SFSpeechRecognizerDelegate {
     private func startNoSpeechTimer() {
         invalidateNoSpeechTimer()
         
+        // Don't start a new timer if we're already cleaning up or cancelling
+        if isCleaningUp || isCancelling {
+            logger.info("Not starting initial no speech timer because we're already cleaning up")
+            return
+        }
+        
         // Set a timer for 5 seconds - if no speech is detected in this time, we'll notify
+        logger.info("Starting initial no speech timer (5 seconds)")
         noSpeechTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
             guard let self = self else { return }
             
-            self.logger.warning("No speech detected after timeout")
+            self.logger.warning("No speech detected after initial timeout")
             
             // Only report no speech if we're still listening
             if self.isListening {
@@ -363,6 +372,12 @@ class SpeechManager: NSObject, SFSpeechRecognizerDelegate {
     private func startTaskCompletionTimer() {
         invalidateTaskCompletionTimer()
         
+        // Don't start a new timer if we're already cleaning up or cancelling
+        if isCleaningUp || isCancelling {
+            logger.info("Not starting task completion timer because we're already cleaning up")
+            return
+        }
+        
         // Set a timer for 30 seconds - if the task hasn't completed by then, force completion
         taskCompletionTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: false) { [weak self] _ in
             guard let self = self else { return }
@@ -378,7 +393,37 @@ class SpeechManager: NSObject, SFSpeechRecognizerDelegate {
     
     // Reset the no speech timer when we get speech
     private func resetNoSpeechTimer() {
-        startNoSpeechTimer()
+        // First invalidate any existing timer
+        invalidateNoSpeechTimer()
+        
+        // Don't start a new timer if we're already cleaning up or cancelling
+        if isCleaningUp || isCancelling {
+            logger.info("Not starting new no speech timer because we're already cleaning up")
+            return
+        }
+        
+        // Log that we're resetting the timer due to speech detection
+        logger.info("Resetting no speech timer due to detected speech")
+        
+        // Start a new timer with a longer duration since we've detected speech
+        noSpeechTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            
+            self.logger.warning("No additional speech detected after timeout")
+            
+            // Only report no speech if we're still listening
+            if self.isListening {
+                // First, properly clean up the audio session
+                self.stopRecording()
+                
+                // Then report the error after a delay to ensure cleanup is complete
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    let noSpeechError = NSError(domain: "SpeechManager", code: 3, 
+                                               userInfo: [NSLocalizedDescriptionKey: "No additional speech detected"])
+                    self.errorHandler?(noSpeechError)
+                }
+            }
+        }
     }
     
     // Invalidate the no speech timer

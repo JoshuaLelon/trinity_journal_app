@@ -186,7 +186,13 @@ struct ContentView: View {
         
         SpeechManager.shared.transcriptionHandler = { text in
             DispatchQueue.main.async {
-                self.transcribedText = text
+                // Only update transcription if we're recording
+                if self.isRecording {
+                    self.transcribedText = text
+                    self.logger.info("Updated transcription: \"\(text)\"")
+                } else {
+                    self.logger.info("Received transcription while not recording, ignoring: \"\(text)\"")
+                }
             }
         }
         
@@ -201,10 +207,23 @@ struct ContentView: View {
                 // Handle specific error cases
                 let nsError = error as NSError
                 if nsError.domain == "SpeechManager" && nsError.code == 3 {
-                    // No speech detected error
-                    self.errorMessage = "No speech detected. Please try again and speak clearly."
-                    self.showingError = true
-                    self.logger.error("Speech recognition error: No speech detected")
+                    // Check the error message to determine the specific case
+                    if nsError.localizedDescription.contains("No additional speech detected") {
+                        // User started speaking but then stopped
+                        self.errorMessage = "No additional speech detected. Your entry has been saved."
+                        self.showingError = true
+                        self.logger.error("Speech recognition error: No additional speech detected")
+                        
+                        // If we have some transcribed text, save it automatically
+                        if !self.transcribedText.isEmpty {
+                            self.saveEntry()
+                        }
+                    } else {
+                        // No speech detected at all
+                        self.errorMessage = "No speech detected. Please try again and speak clearly."
+                        self.showingError = true
+                        self.logger.error("Speech recognition error: No speech detected")
+                    }
                 } else if nsError.domain == "kAFAssistantErrorDomain" {
                     // Speech service error - don't show alert for these as they're often transient
                     self.logger.error("Speech recognition service error: \(error.localizedDescription)")
@@ -225,13 +244,21 @@ struct ContentView: View {
             isRecording = false
         }
         
+        // Log the current state before saving
+        logger.info("Saving journal entry for prompt: \(currentPrompt) with text: \"\(transcribedText)\"")
+        
         // Save the entry to local storage using JournalStore
-        logger.info("Saving journal entry for prompt: \(currentPrompt)")
         JournalStore.shared.saveEntry(prompt: currentPrompt, response: transcribedText)
         logger.info("Journal entry saved successfully")
         
+        // Clear the transcription before moving to next prompt
+        transcribedText = ""
+        
         // Move to next prompt or end session
         moveToNextPrompt()
+        
+        // Log the state after moving to the next prompt
+        logger.info("After moving to next prompt: \(currentPrompt), transcription is \(transcribedText.isEmpty ? "empty" : "not empty")")
     }
     
     private func discardEntry() {
@@ -241,10 +268,20 @@ struct ContentView: View {
             isRecording = false
         }
         
+        // Log the current state before discarding
+        logger.info("Discarding journal entry for prompt: \(currentPrompt) with text: \"\(transcribedText)\"")
+        
         // Clear the transcribed text and stay on the same prompt
-        logger.info("Discarding journal entry")
         transcribedText = ""
         recordingStatus = "Ready to record"
+        
+        // Log the state after discarding
+        logger.info("After discarding entry, transcription is \(transcribedText.isEmpty ? "empty" : "not empty")")
+        
+        // Force UI update to ensure transcription is cleared
+        DispatchQueue.main.async {
+            self.transcribedText = ""
+        }
     }
     
     private func moveToNextPrompt() {
@@ -256,7 +293,12 @@ struct ContentView: View {
         // Move to the next prompt or end session
         promptIndex = (promptIndex + 1) % prompts.count
         currentPrompt = prompts[promptIndex]
-        logger.info("Moved to next prompt: \(currentPrompt)")
+        logger.info("Moved to next prompt: \(currentPrompt), cleared previous transcription")
+        
+        // Ensure transcription is cleared after state update
+        DispatchQueue.main.async {
+            self.transcribedText = ""
+        }
     }
     
     private func requestPermissions() {
