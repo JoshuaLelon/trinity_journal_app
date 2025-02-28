@@ -69,15 +69,15 @@ In this phase, we implement:
   Continue leveraging MVC, with refinements in controller logic for auto-starting recording.
 
 ## Implementation Checklist
-- [ ] **Auto-Start Recording:**  
-  - [ ] Update the view controller to trigger recording in `viewDidAppear()`.
-  - [ ] Integrate a state machine to handle recording states:
+- [x] **Auto-Start Recording:**  
+  - [x] Update the view controller to trigger recording in `viewDidAppear()`.
+  - [x] Integrate a state machine to handle recording states:
     ```swift
     enum RecordingState {
         case idle, recording, transcribing, completed
     }
     ```
-  - [ ] Display an animated indicator while recording.
+  - [x] Display an animated indicator while recording.
     
     Code Example: Auto-Starting Voice Recording
     ```swift
@@ -97,10 +97,10 @@ In this phase, we implement:
     }
     ```
 
-- [ ] **UI Enhancements:**  
-  - [ ] Design a dynamic prompt card with rounded corners and a subtle drop shadow.
-  - [ ] Implement a real-time transcription view that updates as the user speaks.
-  - [ ] Add "Retry" and "Save" buttons below the transcription:
+- [x] **UI Enhancements:**  
+  - [x] Design a dynamic prompt card with rounded corners and a subtle drop shadow.
+  - [x] Implement a real-time transcription view that updates as the user speaks.
+  - [x] Add "Retry" and "Save" buttons below the transcription:
     ```swift
     // Example button style in SwiftUI:
     Button(action: retryTranscription) {
@@ -112,13 +112,13 @@ In this phase, we implement:
     }
     ```
 
-- [ ] **Handling Transcription Failures:**  
-  - [ ] Provide a retry mechanism if transcription fails.
-  - [ ] Use a delegate method to notify the view controller when transcription is complete or if an error occurs.
+- [x] **Handling Transcription Failures:**  
+  - [x] Provide a retry mechanism if transcription fails.
+  - [x] Use a delegate method to notify the view controller when transcription is complete or if an error occurs.
 
-- [ ] **Testing & Debugging:**  
-  - [ ] Test auto-start recording across different app states.
-  - [ ] Verify that UI elements update correctly based on state changes.
+- [x] **Testing & Debugging:**  
+  - [x] Test auto-start recording across different app states.
+  - [x] Verify that UI elements update correctly based on state changes.
 
 
 ## Flow Diagrams
