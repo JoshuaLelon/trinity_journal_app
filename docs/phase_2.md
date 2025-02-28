@@ -123,39 +123,11 @@ In this phase, we implement:
 
 ## Flow Diagrams
 
-### **Mermaid Sequence Diagram**
-```mermaid
-sequenceDiagram
-    participant User
-    participant App
-    participant AppleSpeechAPI
-    
-    User->>App: Opens app
-    App->>User: Displays prompt
-    App->>AppleSpeechAPI: Starts voice recognition
-    AppleSpeechAPI->>App: Returns transcribed text
-    App->>User: Displays transcribed text
-    User->>App: Decides to re-transcribe
-    App->>AppleSpeechAPI: Starts voice recognition again
-    AppleSpeechAPI->>App: Returns transcribed text
-    App->>User: Displays re-transcribed text
-    User->>App: Saves response
-    App->>User: Moves to next prompt
-```
+### **Sequence Diagram**
+See [Phase 2 Sequence Diagram](./diagrams/phase_2_sequence_diagram.md)
 
-### **Mermaid Flow Diagram**
-```mermaid
-flowchart TD
-    A[Receive Notification] -->|User Opens App| B[Display Prompt]
-    B --> C[Start Recording Automatically]
-    C --> D[Speech-to-Text API]
-    D --> E[Show Transcription]
-    E -->|User Saves| F[Store In Memory]
-    E -->|User Discards| B
-    F --> H[Move to Next Prompt]
-    H -->|All Prompts Done?| I[End Session, show completion message]
-    H -->|More Prompts?| B
-```
+### **Flow Diagram**
+See [Phase 2 Flow Diagram](./diagrams/phase_2_flow_diagram.md)
 
 ---
 

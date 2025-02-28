@@ -488,92 +488,14 @@ We'll use LangSmith for:
 
 ## Flow Diagrams
 
-### **Mermaid Sequence Diagram**
-```mermaid
-sequenceDiagram
-    participant User
-    participant App
-    participant AIEngine
-    participant NotionAPI
-    participant AppleSpeechAPI
+### **Sequence Diagram**
+See [Phase 4 Sequence Diagram](./diagrams/phase_4_sequence_diagram.md)
 
-    User->>App: Opens app
-    App->>NotionAPI: Query for existing responses
-    NotionAPI->>App: Returns completed prompts
-    App->>User: Displays next incomplete prompt
-    App->>AppleSpeechAPI: Starts voice recognition
-    AppleSpeechAPI->>App: Returns transcribed text
-    App->>AIEngine: Classify response
-    AIEngine-->>App: Determines correct prompt
-    App->>User: Lets them know that the prompt has changed (if needed)
-    App->>User: Asks them if there is anything else they would like to add
-    App->>AppleSpeechAPI: Starts voice recognition
-    AppleSpeechAPI->>App: Returns transcribed text
-    App->>AIEngine: Classify response
-    AIEngine-->>App: Determines that it's still the same prompt
-    App->>User: Asks them if there is anything else they would like to add
-    User->>App: User says no
-    App->>NotionAPI: Sends formatted response to Notion
-    NotionAPI->>App: Confirms success
-    App->>User: Moves to next prompt or shows completion
-```
+### **Flow Diagram**
+See [Phase 4 Flow Diagram](./diagrams/phase_4_flow_diagram.md)
 
-### **Mermaid Flow Diagram**
-```mermaid
-flowchart TD
-    A[Receive Notification] -->|User Opens App| AA[Query Notion for Existing Responses]
-    AA --> B[Display Next Incomplete Prompt]
-    B --> C[Start Recording Automatically]
-    C --> D[Speech-to-Text API]
-    D --> E[Show Transcription]
-    E --> F[Send to AI for Classification]
-    F -->|Matches Current Prompt| G[Ask User if They Want to Add More]
-    F -->|Does Not Match| H[Clarify that the prompt has changed with User]
-    H --> G
-    G -->|User Says Yes| I[Start Recording Again]
-    G -->|User Says No| J[Save to Notion]
-    I --> D
-    J --> K[Success?]
-    K -->|Yes| L[Show Confirmation]
-    K -->|No| M[Show Error Message]
-    L --> N[Move to Next Prompt]
-    M --> O[Retry or Save Locally]
-    O --> B
-    N -->|All Prompts Done?| P[Show Completion Message]
-    N -->|More Prompts?| B
-```
-
-### Backend and LangGraph Flow Diagram
-
-```mermaid
-flowchart TD
-    START[Start] --> A[Receive Transcribed Response]
-    A --> B[Classify Response]
-    
-    %% Classification branch
-    B --> C{Matches Current Prompt?}
-    C -->|Yes| E[Continue with Current Prompt]
-    C -->|No| D[Switch Prompt + Notify User]
-    D --> E
-    
-    %% Refinement branch
-    E --> F{User Stuck?}
-    F -->|Yes| G[Refine Prompt with Suggestions]
-    F -->|No| H[Format Response]
-    G --> H
-    
-    %% Saving branch
-    H --> I[Ask for Confirmation]
-    I --> J{User Confirmed?}
-    J -->|Yes| K[Save to Notion]
-    J -->|No| B
-    
-    K --> L[Update Completed Prompts]
-    L --> M{All Prompts Done?}
-    M -->|Yes| N[Show Completion]
-    M -->|No| O[Move to Next Prompt]
-    O --> START
-```
+### **Backend and LangGraph Flow Diagram**
+See [Phase 4 LangGraph Flow Diagram](./diagrams/phase_4_langgraph_flow_diagram.md)
 
 ## Dependencies & Configuration
 - **Technologies**: Swift (iOS app), FastAPI (backend), LangChain, OpenAI API (for classification & formatting), Notion API.

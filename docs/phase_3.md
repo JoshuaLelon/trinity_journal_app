@@ -115,43 +115,11 @@ In this phase, we implement:
 
 ## Flow Diagrams
 
-### **Mermaid Sequence Diagram**
-```mermaid
-sequenceDiagram
-    participant User
-    participant App
-    participant NotionAPI
-    
-    User->>App: Opens app
-    App->>User: Displays prompt
-    App->>AppleSpeechAPI: Starts voice recognition
-    AppleSpeechAPI->>App: Returns transcribed text
-    App->>User: Displays transcribed text
-    User->>App: Saves response or re-transcribes
-    App->>NotionAPI: Sends data to Notion
-    NotionAPI->>App: Confirms success
-    App->>User: Displays success message
-    App->>User: Moves to next prompt
-```
+### **Sequence Diagram**
+See [Phase 3 Sequence Diagram](./diagrams/phase_3_sequence_diagram.md)
 
-### **Mermaid Flow Diagram**
-```mermaid
-flowchart TD
-    A[Receive Notification] -->|User Opens App| B[Display Prompt]
-    B --> C[Start Recording Automatically]
-    C --> D[Speech-to-Text API]
-    D --> E[Show Transcription]
-    E -->|User Saves| F[Send to Notion API]
-    E -->|User Discards| B
-    F --> H[Success?]
-    H -->|Yes| I[Show Confirmation]
-    H -->|No| J[Show Error Message]
-    I --> K[Move to Next Prompt]
-    J --> L[Retry or Save Locally]
-    L --> B[Display Prompt]
-    K -->|All Prompts Done?| M[Show Completion Message]
-    K -->|More Prompts?| B
-```
+### **Flow Diagram**
+See [Phase 3 Flow Diagram](./diagrams/phase_3_flow_diagram.md)
 
 ---
 

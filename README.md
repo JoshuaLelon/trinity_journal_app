@@ -179,3 +179,6 @@ struct JournalEntry: Codable {
   Enable local storage and later syncing when internet connectivity is restored.
 - **Cross-Platform Support:**  
   Develop web or Android versions of the app for a seamless cross-device journaling experience.
+
+## 10. Documentation Structure
+All diagrams for the project are stored in the `docs/diagrams/` directory for better organization and maintainability. Each phase documentation references these diagrams instead of embedding them directly.
