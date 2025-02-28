@@ -1,11 +1,11 @@
-# Phase 2: Auto-Start Recording + Improved UI
+# Phase 2: Speech-to-Text Integration
 
-**[Previous: Phase 1](./phase_1.md) | [Next: Phase 3](./phase_3.md)**
+**[Home](./README.md) | [Previous: Phase 1](./phase_1.md) | [Next: Phase 3](./phase_3.md)**
 
 ---
 
 ## Problem Statement
-The journaling experience should be more seamless by automatically starting voice recording when the user opens the app. This removes unnecessary steps and makes the process faster. Additionally, the UI should dynamically update with the current prompt and display transcribed responses more intuitively.
+Users want to journal without typing. The app should allow users to speak their journal entries, which are then transcribed automatically.
 
 ## Solution Overview
 In this phase, we implement:
@@ -17,7 +17,7 @@ In this phase, we implement:
 
 ## Feature List
 ### **Existing (From Previous Phase)**
-- **Notifications**: Sent at 8 AM, then every 30 minutes if the user hasn’t journaled.
+- **Notifications**: Sent at 8 AM, then every 30 minutes if the user hasn't journaled.
 - **UI**: Basic screen displaying the current prompt.
 - **Speech-to-Text**: Automatic transcription when the user speaks.
 - **Local Storage**: Responses saved locally in memory.
@@ -57,7 +57,7 @@ In this phase, we implement:
   - Maintain Phase 1 color palette.
   - Use a slightly larger font for real-time transcription display (18pt, regular).
 - **Interactive Elements:**  
-  - Clearly styled “Retry” and “Save” buttons with a shadow effect for depth.
+  - Clearly styled "Retry" and "Save" buttons with a shadow effect for depth.
   - Visual feedback (e.g., change button color) when recording starts/stops.
 
 ## Design Patterns & Architecture
@@ -100,7 +100,7 @@ In this phase, we implement:
 - [ ] **UI Enhancements:**  
   - [ ] Design a dynamic prompt card with rounded corners and a subtle drop shadow.
   - [ ] Implement a real-time transcription view that updates as the user speaks.
-  - [ ] Add “Retry” and “Save” buttons below the transcription:
+  - [ ] Add "Retry" and "Save" buttons below the transcription:
     ```swift
     // Example button style in SwiftUI:
     Button(action: retryTranscription) {
@@ -175,7 +175,7 @@ flowchart TD
 
 ---
 
-This phase streamlines journaling by removing the need to manually start recording. In **Phase 3**, we will integrate Notion API support so that journal entries are stored externally.
+This phase significantly reduces the friction in journaling by allowing users to speak rather than type. In **Phase 3**, we'll integrate with Notion to store journal entries.
 
-**[Previous: Phase 1](./phase_1.md) | [Next: Phase 3](./phase_3.md)**
+**[Home](./README.md) | [Previous: Phase 1](./phase_1.md) | [Next: Phase 3](./phase_3.md)**
 

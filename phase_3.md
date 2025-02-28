@@ -1,11 +1,11 @@
-# Phase 3: Notion Integration (Basic)
+# Phase 3: Notion API Integration
 
-**[Previous: Phase 2](./phase_2.md) | [Next: Phase 4](./phase_4.md)**
+**[Home](./README.md) | [Previous: Phase 2](./phase_2.md) | [Next: Phase 4](./phase_4.md)**
 
 ---
 
 ## Problem Statement
-The app should persist journal entries beyond local storage by integrating with Notion. This allows users to access their entries outside the app while maintaining a structured format.
+Users want their journal entries stored in Notion for better organization and accessibility. The app should seamlessly integrate with Notion to store entries in a structured format.
 
 ## Solution Overview
 In this phase, we implement:
@@ -18,7 +18,7 @@ In this phase, we implement:
 
 ## Feature List
 ### **Existing (From Previous Phase)**
-- **Notifications**: Sent at 8 AM, then every 30 minutes if the user hasn’t journaled.
+- **Notifications**: Sent at 8 AM, then every 30 minutes if the user hasn't journaled.
 - **UI**: Displays current prompt and transcribed response.
 - **Speech-to-Text**: Automatic transcription when the app is opened.
 - **Local Storage**: Responses temporarily stored in memory.
@@ -46,7 +46,7 @@ In this phase, we implement:
   - Success modals: green accents; error modals: red accents.
 - **Consistent Style:**  
   - Maintain Phase 1 and 2 styling.  
-  - Use consistent button styling for “Confirm” or “Retry” actions.
+  - Use consistent button styling for "Confirm" or "Retry" actions.
 - **Color Palette:**  
   - Background: #FFFFFF (white)  
   - Primary Accent: #007AFF (iOS blue)  
@@ -67,7 +67,7 @@ In this phase, we implement:
   - Maintain Phase 1 color palette.
   - Use a slightly larger font for real-time transcription display (18pt, regular).
 - **Interactive Elements:**  
-  - Clearly styled “Retry” and “Save” buttons with a shadow effect for depth.
+  - Clearly styled "Retry" and "Save" buttons with a shadow effect for depth.
   - Visual feedback (e.g., change button color) when recording starts/stops.
 
 ## Design Patterns & Architecture
@@ -202,6 +202,6 @@ POST /send_to_notion
 
 ---
 
-This phase ensures that journal entries are no longer stored locally but persist in Notion. In **Phase 4**, we will implement AI-powered prompt switching and formatting using LangGraph.
+This phase enables users to store their journal entries in Notion for better organization. In **Phase 4**, we'll add AI-powered prompt switching and formatting capabilities.
 
-**[Previous: Phase 2](./phase_2.md) | [Next: Phase 4](./phase_4.md)**
+**[Home](./README.md) | [Previous: Phase 2](./phase_2.md) | [Next: Phase 4](./phase_4.md)**

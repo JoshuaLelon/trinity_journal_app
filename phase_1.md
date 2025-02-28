@@ -1,24 +1,24 @@
-# Phase 1: Basic Local-Only Journaling App
+# Phase 1: Basic Journaling App with Notifications
 
-**[Next: Phase 2](./phase_2.md)**
+**[Home](./README.md) | [Next: Phase 2](./phase_2.md)**
 
 ---
 
 ## Problem Statement
-The app should remind the user to journal and allow them to record their thoughts. This phase ensures a basic but functional experience where the user receives notifications and can record their journal entries using voice input.
+Users need a simple way to journal daily with minimal friction. The app should send notifications to remind users to journal and provide a basic interface for recording entries.
 
 ## Solution Overview
 In this phase, we implement:
 - Scheduled notifications reminding the user to journal.
 - A simple UI to display prompts.
-- Voice recording and transcription using Apple’s built-in speech-to-text API.
+- Voice recording and transcription using Apple's built-in speech-to-text API.
 - Local storage of transcribed journal entries (not yet sent to Notion).
 
 ---
 
 ## Feature List
 ### To implement in this phase:
-- **Notifications**: Sent at 8 AM, then every 30 minutes if the user hasn’t journaled.
+- **Notifications**: Sent at 8 AM, then every 30 minutes if the user hasn't journaled.
 - **UI**: Basic screen displaying the current prompt.
 - **Speech-to-Text**: Automatic transcription when the user speaks.
 - **Local Storage**: Responses saved locally in memory
@@ -99,7 +99,7 @@ flowchart TD
 
 - [ ] **UI Development:**  
   - [ ] Create a basic storyboard or SwiftUI view with:
-    - A large label for the prompt (e.g., “What do you desire?”).
+    - A large label for the prompt (e.g., "What do you desire?").
     - A recording button with a microphone icon.
     - A text view area to display the transcription.
   - [ ] Apply the style guide (colors, fonts, rounded corners).
@@ -141,7 +141,7 @@ flowchart TD
 
 
 - [ ] **Voice Recording & Transcription:**  
-  - [ ] Integrate Apple’s Speech Framework.
+  - [ ] Integrate Apple's Speech Framework.
   - [ ] Create a helper class (or extend the controller) to handle voice recording:
     ```swift
     import Speech
@@ -175,6 +175,6 @@ flowchart TD
 
 ---
 
-This phase provides the foundation for the app, ensuring that users can receive reminders and record journal entries. In **Phase 2**, we will streamline the experience by automatically starting voice recording when the app opens.
+This phase establishes the foundation for our journaling app. In **Phase 2**, we'll add speech-to-text functionality to make journaling even more frictionless.
 
-**[Next: Phase 2](./phase_2.md)**
+**[Home](./README.md) | [Next: Phase 2](./phase_2.md)**
