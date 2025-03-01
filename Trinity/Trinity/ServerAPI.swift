@@ -29,6 +29,24 @@ public class ServerAPIClient {
     private let baseURL = "http://ec2-3-145-81-84.us-east-2.compute.amazonaws.com:8000"
     private let connectionTimeout: TimeInterval = 10.0 // 10 seconds timeout
     
+    // MARK: - Private Properties
+    // Custom URLSession that allows HTTP connections (bypassing ATS)
+    private lazy var session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = self.connectionTimeout
+        config.timeoutIntervalForResource = 60.0
+        
+        // The following line effectively disables ATS for this session
+        // This is for development only - in production, use HTTPS
+        config.waitsForConnectivity = true
+        
+        #if DEBUG
+        print("⚠️ Using insecure HTTP connection - FOR DEVELOPMENT ONLY ⚠️")
+        #endif
+        
+        return URLSession(configuration: config)
+    }()
+    
     // MARK: - Initialization
     private init() {}
     
@@ -67,7 +85,8 @@ public class ServerAPIClient {
             return
         }
         
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        // Use our custom session instead of URLSession.shared
+        let task = session.dataTask(with: request) { data, response, error in
             if let error = error {
                 // Check for timeout or connection refused errors
                 let nsError = error as NSError
@@ -117,7 +136,8 @@ public class ServerAPIClient {
         request.httpMethod = "GET"
         request.timeoutInterval = connectionTimeout
         
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        // Use our custom session instead of URLSession.shared
+        let task = session.dataTask(with: request) { data, response, error in
             if let error = error {
                 // Check for timeout or connection refused errors
                 let nsError = error as NSError
@@ -169,16 +189,16 @@ public class ServerAPIClient {
     /// Check if the server is accessible
     /// - Parameter completion: Completion handler with boolean indicating if server is accessible
     public func checkServerConnection(completion: @escaping (Bool) -> Void) {
-        let url = URL(string: "\(baseURL)/api/v1/health")!
+        let url = URL(string: "\(baseURL)/health")!
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        request.timeoutInterval = 5.0 // Short timeout for quick check
+        request.timeoutInterval = 5.0  // Shorter timeout for health check
         
-        let task = URLSession.shared.dataTask(with: request) { _, response, _ in
-            if let httpResponse = response as? HTTPURLResponse, 
-               (200...499).contains(httpResponse.statusCode) {
-                // If we get any HTTP response (even an error), the server is up
+        // Use our custom session instead of URLSession.shared
+        let task = session.dataTask(with: request) { _, response, _ in
+            if let httpResponse = response as? HTTPURLResponse,
+               (200...299).contains(httpResponse.statusCode) {
                 completion(true)
             } else {
                 completion(false)

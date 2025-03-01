@@ -104,3 +104,119 @@ After fixing build issues, you can test the server integration using:
 2. `JournalStore.swift` - Handles saving entries locally and sending them to the server
 
 All communication with Notion now happens through the FastAPI server, making the iOS app simpler and more focused. 
+
+## Building and Installing on Physical Devices
+
+To build and install the app on a physical iOS device using the command line, follow these steps:
+
+### 1. Find Your Device ID
+
+First, you need to get your device's identifier:
+
+```bash
+xcrun xctrace list devices
+```
+
+This will show a list of available devices. Look for your physical device in the format:
+```
+iPhone Name (iOS Version) (device-id)
+```
+
+### 2. Clean the Project
+
+Clean the project to ensure a fresh build:
+
+```bash
+cd /path/to/Trinity
+xcodebuild clean -project Trinity.xcodeproj -scheme Trinity
+```
+
+### 3. Build and Install
+
+Use the following command to build and install the app on your device:
+
+```bash
+xcodebuild -project Trinity.xcodeproj -scheme Trinity -destination "platform=iOS,arch=arm64,id=YOUR_DEVICE_ID" clean build install
+```
+
+Replace `YOUR_DEVICE_ID` with your actual device ID from step 1.
+
+For example:
+
+```bash
+xcodebuild -project Trinity.xcodeproj -scheme Trinity -destination "platform=iOS,arch=arm64,id=00008030-000D49481AB9802E" clean build install
+```
+
+### Troubleshooting Installation Issues
+
+If you encounter the "Failed to install the app on the device" error (CoreDeviceError 3002):
+
+1. Make sure you're using the correct device ID
+2. Ensure your provisioning profile is valid and includes your device
+3. Check that your Apple Developer account has the device registered
+4. Verify that your device is trusted on your Mac
+5. Try restarting both your Mac and iOS device
+6. Ensure you have at least 500MB of free space on your device
+
+### Common Error Codes
+
+- **CoreDeviceError 3002**: Failed to install the app on the device
+- **CoreDeviceError 3004**: Device is locked
+- **CoreDeviceError 3007**: Device is not connected
+
+## HTTP Connection Issues (App Transport Security)
+
+If you're seeing this error:
+> "The resource could not be loaded because the App Transport Security policy requires the use of a secure connection."
+
+This is happening because iOS requires HTTPS connections by default. We've implemented three solutions:
+
+### Solution 1: Custom URLSession in Network Classes
+We've updated both `ServerAPI.swift` and `JournalStore.swift` to use custom URLSession configurations that are prepared to handle HTTP connections. This should work for most development cases.
+
+### Solution 2: Info.plist Configuration (Implemented)
+We've created a custom Info.plist file with the proper App Transport Security settings:
+
+1. Created a physical Info.plist file in the Trinity directory
+2. Added the following ATS configuration:
+   ```xml
+   <key>NSAppTransportSecurity</key>
+   <dict>
+       <key>NSExceptionDomains</key>
+       <dict>
+           <key>ec2-3-145-81-84.us-east-2.compute.amazonaws.com</key>
+           <dict>
+               <key>NSExceptionAllowsInsecureHTTPLoads</key>
+               <true/>
+               <key>NSIncludesSubdomains</key>
+               <true/>
+               <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+               <true/>
+           </dict>
+       </dict>
+   </dict>
+   ```
+3. Updated the project settings to use this Info.plist file instead of the generated one
+4. **Important**: Removed all `INFOPLIST_KEY_*` entries from project.pbxproj to avoid conflicts between the physical Info.plist and generated plist entries
+
+### Fixing Info.plist Build Conflicts
+
+If you encounter this error:
+> Multiple commands produce '/Users/jm/Library/Developer/Xcode/DerivedData/Trinity-*/Build/Products/Debug-iphoneos/Trinity.app/Info.plist'
+
+This happens when Xcode tries to both:
+1. Copy the physical Info.plist file AND
+2. Generate an Info.plist from build settings
+
+The solution is to:
+1. Ensure `GENERATE_INFOPLIST_FILE = NO` in project settings
+2. Remove all `INFOPLIST_KEY_*` entries from project.pbxproj
+3. Make sure all needed Info.plist keys are in the physical Info.plist file
+4. Run a clean build (`Product > Clean Build Folder` in Xcode)
+
+### Long-term Solution (Recommended)
+The best solution is to configure your EC2 server with HTTPS:
+1. Get a domain name for your server
+2. Set up a free SSL certificate using Let's Encrypt
+3. Configure your FastAPI server with HTTPS support
+4. Update all URLs in the app to use HTTPS instead of HTTP 

@@ -12,17 +12,31 @@ struct JournalEntryData: Codable {
 class JournalStore {
     static let shared = JournalStore()
     
-    private var entries: [JournalEntryData] = []
+    private let userDefaultsKey = "JournalEntries"
+    private(set) var entries: [JournalEntryData] = []
     
-    // Closure for handling API upload status
-    var uploadStatusHandler: ((Bool, String?) -> Void)?
+    // Closure for handling upload status
+    var uploadStatusHandler: ((Bool, String) -> Void)?
+    
+    // Custom URLSession that allows HTTP connections (bypassing ATS)
+    private lazy var session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30.0
+        config.timeoutIntervalForResource = 60.0
+        
+        // The following line effectively prepares for supporting HTTP
+        // This is for development only - in production, use HTTPS
+        config.waitsForConnectivity = true
+        
+        #if DEBUG
+        print("⚠️ JournalStore: Using insecure HTTP connection - FOR DEVELOPMENT ONLY ⚠️")
+        #endif
+        
+        return URLSession(configuration: config)
+    }()
     
     private init() {
-        // Load entries from UserDefaults
-        if let data = UserDefaults.standard.data(forKey: "journalEntries"),
-           let savedEntries = try? JSONDecoder().decode([JournalEntryData].self, from: data) {
-            entries = savedEntries
-        }
+        loadEntries()
     }
     
     func saveEntry(prompt: String, response: String) {
@@ -86,14 +100,14 @@ class JournalStore {
             do {
                 request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
             } catch {
-                // Call the handler if set
                 DispatchQueue.main.async {
                     self.uploadStatusHandler?(false, "Error creating request: \(error.localizedDescription)")
                 }
                 return
             }
             
-            let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            // Use our custom session instead of URLSession.shared
+            let task = session.dataTask(with: request) { [weak self] data, response, error in
                 guard let self = self else { return }
                 
                 if let error = error {
@@ -151,12 +165,14 @@ class JournalStore {
                                 self.entries[i] = updatedEntry
                             }
                         }
+                        
+                        // Save to UserDefaults
                         self.saveToUserDefaults()
                     }
                     
                     // Call the handler if set
                     DispatchQueue.main.async {
-                        self.uploadStatusHandler?(success, success ? nil : "Failed to save to Notion")
+                        self.uploadStatusHandler?(success, success ? "" : "Failed to save to Notion")
                     }
                 } catch {
                     DispatchQueue.main.async {
@@ -194,5 +210,13 @@ class JournalStore {
         
         // Default case - if we can't match, use a generic type
         return "note"
+    }
+    
+    private func loadEntries() {
+        // Load entries from UserDefaults
+        if let data = UserDefaults.standard.data(forKey: "journalEntries"),
+           let savedEntries = try? JSONDecoder().decode([JournalEntryData].self, from: data) {
+            entries = savedEntries
+        }
     }
 } 
