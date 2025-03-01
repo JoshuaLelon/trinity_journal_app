@@ -1,6 +1,5 @@
 import Foundation
-// Import the NotionAPIClient module
-import SwiftUI // This is needed to give access to our app's modules
+import SwiftUI
 
 // A Codable version of JournalEntry for UserDefaults storage
 struct JournalEntryData: Codable {
@@ -15,8 +14,8 @@ class JournalStore {
     
     private var entries: [JournalEntryData] = []
     
-    // Closure for handling Notion upload status
-    var notionUploadStatusHandler: ((Bool, String?) -> Void)?
+    // Closure for handling API upload status
+    var uploadStatusHandler: ((Bool, String?) -> Void)?
     
     private init() {
         // Load entries from UserDefaults
@@ -36,8 +35,8 @@ class JournalStore {
         entries.append(newEntry)
         saveToUserDefaults()
         
-        // After saving locally, try to upload to Notion
-        uploadEntriesToNotion()
+        // After saving locally, try to upload to server
+        uploadEntriesToServer()
     }
     
     func getAllEntries() -> [JournalEntryData] {
@@ -50,60 +49,136 @@ class JournalStore {
         }
     }
     
-    // MARK: - Notion Integration
+    // MARK: - Server Integration
     
-    /// Uploads all non-uploaded entries to Notion
-    func uploadEntriesToNotion() {
+    /// Uploads all non-uploaded entries to the server
+    func uploadEntriesToServer() {
         // Get the current date in ISO format (YYYY-MM-DD)
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let today = dateFormatter.string(from: Date())
         
-        // Organize entries by prompt type
-        var promptData: [String: [String]] = [:]
-        
-        // Group not-yet-uploaded entries by prompt type
+        // Get not-yet-uploaded entries
         let notUploadedEntries = entries.filter { !$0.isUploaded }
         
-        for entry in notUploadedEntries {
-            let promptType = mapPromptToType(entry.prompt)
-            if promptData[promptType] == nil {
-                promptData[promptType] = []
-            }
-            promptData[promptType]?.append(entry.response)
-        }
-        
         // If we have entries to upload
-        if !promptData.isEmpty {
-            NotionAPIClient.shared.sendEntry(date: today, promptData: promptData) { [weak self] success, errorMessage in
-                guard let self = self else { return }
-                
-                if success {
-                    // Mark entries as uploaded
-                    for i in 0..<self.entries.count {
-                        if !self.entries[i].isUploaded {
-                            // We can't modify struct properties directly, so we create a new entry
-                            let updatedEntry = JournalEntryData(
-                                prompt: self.entries[i].prompt,
-                                response: self.entries[i].response,
-                                timestamp: self.entries[i].timestamp,
-                                isUploaded: true
-                            )
-                            self.entries[i] = updatedEntry
-                        }
-                    }
-                    self.saveToUserDefaults()
-                }
-                
+        if let latestEntry = notUploadedEntries.last {
+            let promptType = mapPromptToType(latestEntry.prompt)
+            
+            // Get the completed prompts
+            let completedPrompts = getCompletedPrompts()
+            
+            // Process the journal entry through the server
+            let url = URL(string: "http://ec2-3-145-81-84.us-east-2.compute.amazonaws.com:8000/process")!
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.timeoutInterval = 10.0
+            
+            // Create request body
+            let requestBody: [String: Any] = [
+                "transcription": latestEntry.response,
+                "current_prompt": promptType,
+                "completed_prompts": completedPrompts
+            ]
+            
+            do {
+                request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+            } catch {
                 // Call the handler if set
                 DispatchQueue.main.async {
-                    self.notionUploadStatusHandler?(success, errorMessage)
+                    self.uploadStatusHandler?(false, "Error creating request: \(error.localizedDescription)")
+                }
+                return
+            }
+            
+            let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    // Call the handler if set
+                    DispatchQueue.main.async {
+                        self.uploadStatusHandler?(false, "Error: \(error.localizedDescription)")
+                    }
+                    return
+                }
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    DispatchQueue.main.async {
+                        self.uploadStatusHandler?(false, "Invalid response")
+                    }
+                    return
+                }
+                
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    DispatchQueue.main.async {
+                        self.uploadStatusHandler?(false, "HTTP Error \(httpResponse.statusCode)")
+                    }
+                    return
+                }
+                
+                guard let data = data else {
+                    DispatchQueue.main.async {
+                        self.uploadStatusHandler?(false, "No data received")
+                    }
+                    return
+                }
+                
+                do {
+                    // Define the response structure inline
+                    struct ServerResponse: Decodable {
+                        let saved_to_notion: Bool
+                    }
+                    
+                    let decoder = JSONDecoder()
+                    let response = try decoder.decode(ServerResponse.self, from: data)
+                    
+                    // Check if saved to Notion
+                    let success = response.saved_to_notion
+                    
+                    if success {
+                        // Mark entries as uploaded
+                        for i in 0..<self.entries.count {
+                            if !self.entries[i].isUploaded {
+                                // We can't modify struct properties directly, so we create a new entry
+                                let updatedEntry = JournalEntryData(
+                                    prompt: self.entries[i].prompt,
+                                    response: self.entries[i].response,
+                                    timestamp: self.entries[i].timestamp,
+                                    isUploaded: true
+                                )
+                                self.entries[i] = updatedEntry
+                            }
+                        }
+                        self.saveToUserDefaults()
+                    }
+                    
+                    // Call the handler if set
+                    DispatchQueue.main.async {
+                        self.uploadStatusHandler?(success, success ? nil : "Failed to save to Notion")
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        self.uploadStatusHandler?(false, "Error parsing response: \(error.localizedDescription)")
+                    }
                 }
             }
+            
+            task.resume()
         }
     }
     
-    /// Maps a prompt to a standardized type for Notion
+    /// Gets the list of completed prompts
+    /// - Returns: Array of completed prompt types
+    private func getCompletedPrompts() -> [String] {
+        // Simply return the unique prompt types that have been uploaded
+        let uploadedEntries = entries.filter { $0.isUploaded }
+        let promptTypes = uploadedEntries.map { mapPromptToType($0.prompt) }
+        return Array(Set(promptTypes))
+    }
+    
+    /// Maps a prompt to a standardized type for the server
     /// - Parameter prompt: The prompt text
     /// - Returns: A standardized prompt type ("desire", "gratitude", or "brag")
     private func mapPromptToType(_ prompt: String) -> String {

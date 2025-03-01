@@ -552,7 +552,8 @@ struct ContentView: View {
     }
     
     private func setupNotionIntegration() {
-        JournalStore.shared.notionUploadStatusHandler = { success, errorMessage in
+        // Set up Notion upload status handler
+        JournalStore.shared.uploadStatusHandler = { success, errorMessage in
             if success {
                 self.showingNotionSuccess = true
             } else {
@@ -564,7 +565,7 @@ struct ContentView: View {
     
     private func retryNotionUpload() {
         // Trigger a retry of the Notion upload
-        JournalStore.shared.uploadEntriesToNotion()
+        JournalStore.shared.uploadEntriesToServer()
     }
 }
 

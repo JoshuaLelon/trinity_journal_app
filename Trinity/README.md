@@ -54,4 +54,106 @@ Trinity is a SwiftUI-based iOS application that helps users journal daily with m
 - Background: #FFFFFF (white)
 - Primary Accent: #007AFF (iOS blue)
 - Text: #333333 (dark gray)
-- Secondary Background: #F5F5F5 (light gray) 
+- Secondary Background: #F5F5F5 (light gray)
+
+## API Integration
+
+The Trinity Journal App integrates with a FastAPI server running on EC2 for journal processing and storage.
+
+### FastAPI Server Integration
+
+The app connects to a FastAPI server at `ec2-3-145-81-84.us-east-2.compute.amazonaws.com:8000` which provides:
+
+1. **Journal Processing** - Analyzes journal entries, classifies them by prompt type, and formats them
+2. **Completed Prompts** - Retrieves a list of prompts completed for the current day
+3. **Notion Integration** - The server handles all interactions with Notion, so the app doesn't need to connect directly
+
+#### API Endpoints
+
+- `POST /process` - Process a journal entry
+  - Request: `JournalRequest` with transcription, current prompt, and completed prompts
+  - Response: `JournalResponse` with detected prompt, formatted response, and refinement suggestions
+
+- `GET /completed-prompts` - Get a list of prompts completed today
+  - Response: Array of strings representing completed prompt types
+
+- `GET /api/v1/health` - Check if the server is running
+  - Response: Health status of the server
+
+#### Implementation
+
+The API integration is implemented in `JournalAPI.swift` which provides:
+
+- `JournalAPIClient` - Singleton class for making API requests
+- `JournalResponse` - Model for API responses
+
+Example usage:
+
+```swift
+// Process a journal entry
+JournalAPIClient.shared.processJournal(
+    transcription: "I'm grateful for my family",
+    currentPrompt: "gratitude",
+    completedPrompts: []
+) { response, error in
+    if let response = response {
+        // Handle successful response
+        print("Formatted response: \(response.formattedResponse)")
+        
+        // Check if the entry was saved to Notion
+        if response.savedToNotion {
+            print("Entry saved to Notion")
+        } else {
+            print("Entry was not saved to Notion")
+        }
+    } else if let error = error {
+        // Handle error
+        print("Error: \(error.localizedDescription)")
+    }
+}
+
+// Get completed prompts
+JournalAPIClient.shared.getCompletedPrompts { prompts, error in
+    if let prompts = prompts {
+        // Handle completed prompts
+        print("Completed prompts: \(prompts)")
+    } else if let error = error {
+        // Handle error
+        print("Error: \(error.localizedDescription)")
+    }
+}
+```
+
+### API Connection Testing
+
+The app includes an API connection test view (`APIConnectionTest.swift`) that allows you to:
+
+1. **Test FastAPI Server Connection** - Checks if the FastAPI server is accessible
+
+To use the API connection test:
+
+1. Navigate to the API Connection Test view in the app
+2. Click "Test Server Connection" to check if the FastAPI server is accessible
+
+## Troubleshooting
+
+### FastAPI Server Connection Issues
+
+If you're having trouble connecting to the FastAPI server:
+
+1. **Check if the server is running** - Make sure your EC2 instance is running and the FastAPI server is started with `python run.py`
+2. **Verify the port** - The server runs on port 8000, not the default HTTP port 80
+3. **Check security groups** - Ensure your EC2 security group allows inbound traffic on port 8000
+4. **Check network connectivity** - Make sure your device has internet access and can reach the EC2 instance
+
+### Notion API Issues
+
+If the server returns errors related to Notion:
+
+1. **Check the server logs** - The server may be having trouble connecting to Notion
+2. **Verify the Notion API key on the server** - Make sure the server has a valid Notion API key
+3. **Check the database ID on the server** - Verify that the database ID in the server configuration matches your Notion database
+
+## Usage
+
+See `JournalView.swift` for a complete example of how to use the API client in a SwiftUI view. 
